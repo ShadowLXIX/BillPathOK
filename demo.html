@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="en" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Oklahoma Bill Tracker - Live Demo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class'
+        }
+    </script>
+    <style>
+        .stage-box {
+            transition: all 0.3s ease;
+        }
+        .stage-box:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+        }
+        .pipeline-arrow {
+            color: #cbd5e1;
+        }
+        .dark .pipeline-arrow {
+            color: #475569;
+        }
+        @keyframes pulse-slow {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .loading {
+            animation: pulse-slow 2s ease-in-out infinite;
+        }
+        .bill-row {
+            transition: background-color 0.2s ease;
+        }
+        .bill-row:hover {
+            background-color: #f8fafc;
+        }
+        .dark .bill-row:hover {
+            background-color: #1e293b;
+        }
+        .tab {
+            transition: all 0.2s ease;
+        }
+        .tab.active {
+            border-bottom: 2px solid #3b82f6;
+            color: #3b82f6;
+        }
+        .dark .tab.active {
+            border-bottom: 2px solid #60a5fa;
+            color: #60a5fa;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
+    
+    <!-- Header -->
+    <header class="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 transition-colors duration-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Oklahoma Legislature</h1>
+                    <p class="text-gray-600 dark:text-gray-400 mt-1">Bill Tracking Dashboard - Live Demo</p>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <div class="text-right hidden md:block">
+                        <p class="text-sm text-gray-500 dark:text-gray-400">Demo Mode</p>
+                        <p id="lastUpdated" class="text-sm font-medium text-gray-900 dark:text-white">Sample Data</p>
+                    </div>
+                    <button onclick="toggleDarkMode()" class="p-2 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors" title="Toggle dark mode">
+                        <svg id="darkModeIcon" class="w-5 h-5 text-gray-700 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <nav class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 transition-colors duration-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex space-x-8">
+                <button onclick="switchTab('dashboard')" class="tab active py-4 px-1 font-medium text-gray-700 dark:text-gray-300" data-tab="dashboard">
+                    Dashboard
+                </button>
+                <button onclick="switchTab('analytics')" class="tab py-4 px-1 font-medium text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300" data-tab="analytics">
+                    Analytics
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        
+        <!-- Dashboard Tab -->
+        <div id="dashboardTab" class="tab-content">
+        
+        <!-- Summary Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 transition-colors duration-200">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Total Bills</p>
+                        <p id="totalBills" class="text-3xl font-bold text-gray-900 dark:text-white mt-2">487</p>
+                    </div>
+                    <div class="bg-blue-100 dark:bg-blue-900 rounded-full p-3">
+                        <svg class="w-6 h-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 transition-colors duration-200">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Active Bills</p>
+                        <p id="activeBills" class="text-3xl font-bold text-green-600 dark:text-green-400 mt-2">342</p>
+                    </div>
+                    <div class="bg-green-100 dark:bg-green-900 rounded-full p-3">
+                        <svg class="w-6 h-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 transition-colors duration-200">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Passed</p>
+                        <p id="passedBills" class="text-3xl font-bold text-emerald-600 dark:text-emerald-400 mt-2">98</p>
+                    </div>
+                    <div class="bg-emerald-100 dark:bg-emerald-900 rounded-full p-3">
+                        <svg class="w-6 h-6 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 transition-colors duration-200">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Vetoed</p>
+                        <p id="vetoedBills" class="text-3xl font-bold text-red-600 dark:text-red-400 mt-2">5</p>
+                    </div>
+                    <div class="bg-red-100 dark:bg-red-900 rounded-full p-3">
+                        <svg class="w-6 h-6 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bill Pipeline Visualization -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow mb-8 transition-colors duration-200">
+            <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                <h2 class="text-xl font-bold text-gray-900 dark:text-white">Legislative Pipeline</h2>
+                <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Track bills as they move through the legislative process</p>
+            </div>
+            <div class="p-6">
+                <div id="pipeline" class="flex items-start justify-between overflow-x-auto pb-4 gap-2">
+                    <!-- Pipeline will be rendered here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Sample Bills -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow transition-colors duration-200">
+            <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                <h3 class="text-lg font-bold text-gray-900 dark:text-white">Sample Bills</h3>
+            </div>
+            <div id="billsList" class="divide-y divide-gray-200 dark:divide-gray-700">
+                <!-- Bills will be rendered here -->
+            </div>
+        </div>
+
+        </div> <!-- End Dashboard Tab -->
+
+        <!-- Analytics Tab -->
+        <div id="analyticsTab" class="tab-content hidden">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                
+                <!-- Bills by Stage Chart -->
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 transition-colors duration-200">
+                    <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-4">Bills by Legislative Stage</h3>
+                    <canvas id="stageChart"></canvas>
+                </div>
+
+                <!-- Bills by Chamber Chart -->
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 transition-colors duration-200">
+                    <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-4">Bills by Chamber</h3>
+                    <canvas id="chamberChart"></canvas>
+                </div>
+
+            </div>
+
+            <!-- Bills Timeline -->
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 transition-colors duration-200 mb-8">
+                <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-4">Bill Status Distribution</h3>
+                <canvas id="timelineChart"></canvas>
+            </div>
+
+            <!-- Activity Trends -->
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 transition-colors duration-200">
+                <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-4">Legislative Activity Over Time</h3>
+                <canvas id="activityChart"></canvas>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        // Mock data
+        const mockData = {
+            pipeline: {
+                introduced: 145,
+                committee: 98,
+                committee_approved: 76,
+                floor_calendar: 45,
+                passed_chamber: 67,
+                enrolled: 34,
+                signed: 17,
+                vetoed: 5
+            },
+            bills: [
+                { id: '1', identifier: 'HB 1001', title: 'Education funding reform bill', stage: 'committee', latest_action_description: 'Referred to Education Committee', latest_action_date: '2026-01-15' },
+                { id: '2', identifier: 'SB 203', title: 'Healthcare access expansion act', stage: 'passed_chamber', latest_action_description: 'Passed Senate 32-16', latest_action_date: '2026-01-20' },
+                { id: '3', identifier: 'HB 1052', title: 'Infrastructure improvement initiative', stage: 'signed', latest_action_description: 'Signed by Governor', latest_action_date: '2026-02-01' },
+                { id: '4', identifier: 'SB 311', title: 'Tax relief for small businesses', stage: 'enrolled', latest_action_description: 'Enrolled and sent to Governor', latest_action_date: '2026-02-05' },
+                { id: '5', identifier: 'HB 1105', title: 'Criminal justice reform measure', stage: 'committee_approved', latest_action_description: 'Passed Judiciary Committee 7-2', latest_action_date: '2026-01-28' },
+                { id: '6', identifier: 'SB 405', title: 'Environmental protection standards', stage: 'introduced', latest_action_description: 'First reading in Senate', latest_action_date: '2026-01-10' },
+                { id: '7', identifier: 'HB 1201', title: 'Digital privacy and data protection', stage: 'committee', latest_action_description: 'Assigned to Technology Committee', latest_action_date: '2026-01-18' },
+                { id: '8', identifier: 'SB 502', title: 'Renewable energy incentives program', stage: 'floor_calendar', latest_action_description: 'Scheduled for floor debate', latest_action_date: '2026-02-03' }
+            ]
+        };
+
+        // Charts storage
+        let charts = {};
+        
+        // Stage definitions
+        const stages = [
+            { id: 'introduced', name: 'Introduced', color: 'bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-900 dark:text-blue-300' },
+            { id: 'committee', name: 'Committee', color: 'bg-purple-100 text-purple-800 border-purple-300 dark:bg-purple-900 dark:text-purple-300' },
+            { id: 'committee_approved', name: 'Committee OK', color: 'bg-indigo-100 text-indigo-800 border-indigo-300 dark:bg-indigo-900 dark:text-indigo-300' },
+            { id: 'floor_calendar', name: 'Floor Ready', color: 'bg-violet-100 text-violet-800 border-violet-300 dark:bg-violet-900 dark:text-violet-300' },
+            { id: 'passed_chamber', name: 'Passed Chamber', color: 'bg-cyan-100 text-cyan-800 border-cyan-300 dark:bg-cyan-900 dark:text-cyan-300' },
+            { id: 'enrolled', name: 'Enrolled', color: 'bg-teal-100 text-teal-800 border-teal-300 dark:bg-teal-900 dark:text-teal-300' },
+            { id: 'signed', name: 'Signed', color: 'bg-green-100 text-green-800 border-green-300 dark:bg-green-900 dark:text-green-300' },
+            { id: 'vetoed', name: 'Vetoed', color: 'bg-red-100 text-red-800 border-red-300 dark:bg-red-900 dark:text-red-300' }
+        ];
+
+        // Dark mode management
+        function toggleDarkMode() {
+            const html = document.documentElement;
+            const isDark = html.classList.contains('dark');
+            
+            if (isDark) {
+                html.classList.remove('dark');
+                localStorage.setItem('darkMode', 'light');
+            } else {
+                html.classList.add('dark');
+                localStorage.setItem('darkMode', 'dark');
+            }
+            
+            updateChartsTheme();
+        }
+        
+        function initDarkMode() {
+            const savedMode = localStorage.getItem('darkMode');
+            if (savedMode === 'dark' || (!savedMode && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.classList.add('dark');
+            }
+        }
+        
+        // Tab switching
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.add('hidden');
+            });
+            
+            document.querySelectorAll('.tab').forEach(btn => {
+                btn.classList.remove('active', 'text-blue-600', 'dark:text-blue-400');
+                btn.classList.add('text-gray-500', 'dark:text-gray-400');
+            });
+            
+            document.getElementById(tabName + 'Tab').classList.remove('hidden');
+            
+            const activeBtn = document.querySelector(`[data-tab="${tabName}"]`);
+            activeBtn.classList.add('active');
+            activeBtn.classList.remove('text-gray-500', 'dark:text-gray-400');
+            activeBtn.classList.add('text-blue-600', 'dark:text-blue-400');
+            
+            if (tabName === 'analytics') {
+                renderCharts();
+            }
+        }
+
+        // Render pipeline
+        function renderPipeline() {
+            const pipeline = document.getElementById('pipeline');
+            pipeline.innerHTML = '';
+            
+            stages.forEach((stage, index) => {
+                const count = mockData.pipeline[stage.id] || 0;
+                
+                const stageDiv = document.createElement('div');
+                stageDiv.className = 'flex-shrink-0 flex flex-col items-center';
+                stageDiv.innerHTML = `
+                    <div class="stage-box cursor-pointer border-2 ${stage.color} rounded-lg p-4 w-32 text-center shadow-sm">
+                        <div class="text-2xl font-bold mb-1">${count}</div>
+                        <div class="text-xs font-medium leading-tight">${stage.name}</div>
+                    </div>
+                `;
+                
+                pipeline.appendChild(stageDiv);
+                
+                if (index < stages.length - 1) {
+                    const arrow = document.createElement('div');
+                    arrow.className = 'flex-shrink-0 flex items-center px-2 pipeline-arrow';
+                    arrow.innerHTML = `
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                        </svg>
+                    `;
+                    pipeline.appendChild(arrow);
+                }
+            });
+        }
+
+        // Render bills
+        function renderBills() {
+            const billsList = document.getElementById('billsList');
+            
+            billsList.innerHTML = mockData.bills.map(bill => {
+                const stage = stages.find(s => s.id === bill.stage) || stages[0];
+                const chamber = bill.identifier?.startsWith('HB') ? 'House' : 'Senate';
+                
+                return `
+                    <div class="bill-row p-6">
+                        <div class="flex items-start justify-between">
+                            <div class="flex-1">
+                                <div class="flex items-center space-x-3 mb-2">
+                                    <span class="font-bold text-blue-600 dark:text-blue-400">${bill.identifier}</span>
+                                    <span class="px-2 py-1 text-xs rounded-full ${stage.color} border">${stage.name}</span>
+                                    <span class="text-xs text-gray-500 dark:text-gray-400">${chamber}</span>
+                                </div>
+                                <h4 class="font-medium text-gray-900 dark:text-white mb-2">${bill.title}</h4>
+                                <p class="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                                    <span class="font-medium">Latest:</span> ${bill.latest_action_description}
+                                </p>
+                                <div class="flex items-center space-x-4 text-xs text-gray-500 dark:text-gray-400">
+                                    <span>📅 ${new Date(bill.latest_action_date).toLocaleDateString()}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Get chart colors
+        function getChartColors() {
+            const isDark = document.documentElement.classList.contains('dark');
+            return {
+                text: isDark ? '#e5e7eb' : '#374151',
+                grid: isDark ? '#374151' : '#e5e7eb',
+                background: isDark ? '#1f2937' : '#ffffff'
+            };
+        }
+
+        // Render all charts
+        function renderCharts() {
+            renderStageChart();
+            renderChamberChart();
+            renderTimelineChart();
+            renderActivityChart();
+        }
+
+        function renderStageChart() {
+            const ctx = document.getElementById('stageChart').getContext('2d');
+            const colors = getChartColors();
+            
+            if (charts.stage) charts.stage.destroy();
+            
+            charts.stage = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: stages.map(s => s.name),
+                    datasets: [{
+                        data: Object.values(mockData.pipeline),
+                        backgroundColor: [
+                            '#3b82f6', '#8b5cf6', '#6366f1', '#7c3aed',
+                            '#06b6d4', '#14b8a6', '#10b981', '#ef4444'
+                        ],
+                        borderWidth: 2,
+                        borderColor: colors.background
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { color: colors.text, padding: 15, font: { size: 11 } }
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderChamberChart() {
+            const ctx = document.getElementById('chamberChart').getContext('2d');
+            const colors = getChartColors();
+            
+            if (charts.chamber) charts.chamber.destroy();
+            
+            charts.chamber = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: ['House Bills', 'Senate Bills'],
+                    datasets: [{
+                        data: [289, 198],
+                        backgroundColor: ['#3b82f6', '#f59e0b'],
+                        borderWidth: 2,
+                        borderColor: colors.background
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { color: colors.text, padding: 15 }
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderTimelineChart() {
+            const ctx = document.getElementById('timelineChart').getContext('2d');
+            const colors = getChartColors();
+            
+            if (charts.timeline) charts.timeline.destroy();
+            
+            charts.timeline = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: stages.map(s => s.name),
+                    datasets: [{
+                        label: 'Number of Bills',
+                        data: Object.values(mockData.pipeline),
+                        backgroundColor: '#3b82f6',
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { color: colors.text },
+                            grid: { color: colors.grid }
+                        },
+                        x: {
+                            ticks: { color: colors.text },
+                            grid: { color: colors.grid }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false }
+                    }
+                }
+            });
+        }
+
+        function renderActivityChart() {
+            const ctx = document.getElementById('activityChart').getContext('2d');
+            const colors = getChartColors();
+            
+            if (charts.activity) charts.activity.destroy();
+            
+            const days = 30;
+            const labels = [];
+            const data = [];
+            
+            for (let i = days; i >= 0; i--) {
+                const date = new Date();
+                date.setDate(date.getDate() - i);
+                labels.push(date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+                data.push(Math.floor(Math.random() * 15) + 5);
+            }
+            
+            charts.activity = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Bills Filed',
+                        data: data,
+                        borderColor: '#3b82f6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { color: colors.text },
+                            grid: { color: colors.grid }
+                        },
+                        x: {
+                            ticks: { 
+                                color: colors.text,
+                                maxRotation: 45,
+                                minRotation: 45
+                            },
+                            grid: { color: colors.grid }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            labels: { color: colors.text }
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateChartsTheme() {
+            if (Object.keys(charts).length > 0) {
+                renderCharts();
+            }
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            initDarkMode();
+            renderPipeline();
+            renderBills();
+        });
+    </script>
+</body>
+</html>

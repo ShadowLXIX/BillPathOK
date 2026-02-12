@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html lang="en" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Oklahoma Bill Tracker - Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class'
+        }
+    </script>
+    <style>
+        .stage-box {
+            transition: all 0.3s ease;
+        }
+        .stage-box:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+        }
+        .pipeline-arrow {
+            color: #cbd5e1;
+        }
+        .dark .pipeline-arrow {
+            color: #475569;
+        }
+        @keyframes pulse-slow {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .loading {
+            animation: pulse-slow 2s ease-in-out infinite;
+        }
+        .bill-row {
+            transition: background-color 0.2s ease;
+        }
+        .bill-row:hover {
+            background-color: #f8fafc;
+        }
+        .dark .bill-row:hover {
+            background-color: #1e293b;
+        }
+        .tab {
+            transition: all 0.2s ease;
+        }
+        .tab.active {
+            border-bottom: 2px solid #3b82f6;
+            color: #3b82f6;
+        }
+        .dark .tab.active {
+            border-bottom: 2px solid #60a5fa;
+            color: #60a5fa;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
+    <!-- Header -->
+    <header class="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 transition-colors duration-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Oklahoma Legislature</h1>
+                    <p class="text-gray-600 dark:text-gray-400 mt-1">Bill Tracking Dashboard</p>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <div class="text-right">
+                        <p class="text-sm text-gray-500 dark:text-gray-400">Last Updated</p>
+                        <p id="lastUpdated" class="text-sm font-medium text-gray-900 dark:text-white">Loading...</p>
+                    </div>
+                    <button onclick="toggleDarkMode()" class="p-2 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors" title="Toggle dark mode">
+                        <svg id="darkModeIcon" class="w-5 h-5 text-gray-700 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>
+                        </svg>
+                    </button>
+                    <button onclick="refreshData()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                        </svg>
+                        <span>Refresh</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <nav class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 transition-colors duration-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex space-x-8">
+                <button onclick="switchTab('dashboard')" class="tab active py-4 px-1 font-medium text-gray-700 dark:text-gray-300" data-tab="dashboard">
+                    Dashboard
+                </button>
+                <button onclick="switchTab('analytics')" class="tab py-4 px-1 font-medium text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300" data-tab="analytics">
+                    Analytics
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        
+        <!-- Dashboard Tab -->
+        <div id="dashboardTab" class="tab-content">
+        
+        <!-- Summary Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 transition-colors duration-200">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Total Bills</p>
+                        <p id="totalBills" class="text-3xl font-bold text-gray-900 dark:text-white mt-2">-</p>
+                    </div>
+                    <div class="bg-blue-100 dark:bg-blue-900 rounded-full p-3">
+                        <svg class="w-6 h-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 transition-colors duration-200">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Active Bills</p>
+                        <p id="activeBills" class="text-3xl font-bold text-green-600 dark:text-green-400 mt-2">-</p>
+                    </div>
+                    <div class="bg-green-100 dark:bg-green-900 rounded-full p-3">
+                        <svg class="w-6 h-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 transition-colors duration-200">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Passed</p>
+                        <p id="passedBills" class="text-3xl font-bold text-emerald-600 dark:text-emerald-400 mt-2">-</p>
+                    </div>
+                    <div class="bg-emerald-100 dark:bg-emerald-900 rounded-full p-3">
+                        <svg class="w-6 h-6 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 transition-colors duration-200">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Vetoed</p>
+                        <p id="vetoedBills" class="text-3xl font-bold text-red-600 dark:text-red-400 mt-2">-</p>
+                    </div>
+                    <div class="bg-red-100 dark:bg-red-900 rounded-full p-3">
+                        <svg class="w-6 h-6 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bill Pipeline Visualization -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow mb-8 transition-colors duration-200">
+            <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                <h2 class="text-xl font-bold text-gray-900 dark:text-white">Legislative Pipeline</h2>
+                <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Track bills as they move through the legislative process</p>
+            </div>
+            <div class="p-6">
+                <div id="pipeline" class="flex items-start justify-between overflow-x-auto pb-4">
+                    <!-- Pipeline stages will be inserted here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Filters and Bill List -->
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            
+            <!-- Filters Sidebar -->
+            <div class="lg:col-span-1">
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 transition-colors duration-200">
+                    <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-4">Filters</h3>
+                    
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Chamber</label>
+                            <select id="chamberFilter" class="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <option value="">All Chambers</option>
+                                <option value="upper">Senate</option>
+                                <option value="lower">House</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Status</label>
+                            <select id="statusFilter" class="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <option value="">All Statuses</option>
+                                <option value="introduced">Introduced</option>
+                                <option value="committee">In Committee</option>
+                                <option value="committee_approved">Committee Approved</option>
+                                <option value="passed_chamber">Passed Chamber</option>
+                                <option value="enrolled">Enrolled</option>
+                                <option value="signed">Signed</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Search</label>
+                            <input 
+                                type="text" 
+                                id="searchInput" 
+                                placeholder="Search bills..."
+                                class="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            >
+                        </div>
+
+                        <button onclick="applyFilters()" class="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors">
+                            Apply Filters
+                        </button>
+                    </div>
+
+                    <!-- Chamber Breakdown -->
+                    <div class="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+                        <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">By Chamber</h4>
+                        <div class="space-y-2">
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm text-gray-600 dark:text-gray-400">House Bills</span>
+                                <span id="houseBillCount" class="text-sm font-semibold text-gray-900 dark:text-white">-</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm text-gray-600 dark:text-gray-400">Senate Bills</span>
+                                <span id="senateBillCount" class="text-sm font-semibold text-gray-900 dark:text-white">-</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bill List -->
+            <div class="lg:col-span-3">
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow transition-colors duration-200">
+                    <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                        <h3 class="text-lg font-bold text-gray-900 dark:text-white">Recent Bills</h3>
+                    </div>
+                    <div class="divide-y divide-gray-200 dark:divide-gray-700">
+                        <div id="billsList" class="min-h-[400px]">
+                            <!-- Bills will be inserted here -->
+                        </div>
+                    </div>
+                    <div class="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex justify-between items-center">
+                        <button onclick="loadPreviousPage()" id="prevBtn" class="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                            Previous
+                        </button>
+                        <span id="pageInfo" class="text-sm text-gray-600 dark:text-gray-400">Page 1</span>
+                        <button onclick="loadNextPage()" id="nextBtn" class="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                            Next
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        </div> <!-- End Dashboard Tab -->
+
+        <!-- Analytics Tab -->
+        <div id="analyticsTab" class="tab-content hidden">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                
+                <!-- Bills by Stage Chart -->
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 transition-colors duration-200">
+                    <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-4">Bills by Legislative Stage</h3>
+                    <canvas id="stageChart"></canvas>
+                </div>
+
+                <!-- Bills by Chamber Chart -->
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 transition-colors duration-200">
+                    <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-4">Bills by Chamber</h3>
+                    <canvas id="chamberChart"></canvas>
+                </div>
+
+            </div>
+
+            <!-- Bills Timeline -->
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 transition-colors duration-200 mb-8">
+                <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-4">Bill Status Distribution</h3>
+                <canvas id="timelineChart"></canvas>
+            </div>
+
+            <!-- Activity Trends -->
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 transition-colors duration-200">
+                <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-4">Legislative Activity Over Time</h3>
+                <canvas id="activityChart"></canvas>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        // State management
+        let currentPage = 1;
+        let currentFilters = {};
+        let billsData = [];
+        let charts = {};
+        
+        // Dark mode management
+        function toggleDarkMode() {
+            const html = document.documentElement;
+            const isDark = html.classList.contains('dark');
+            
+            if (isDark) {
+                html.classList.remove('dark');
+                localStorage.setItem('darkMode', 'light');
+            } else {
+                html.classList.add('dark');
+                localStorage.setItem('darkMode', 'dark');
+            }
+            
+            // Update charts if they exist
+            updateChartsTheme();
+        }
+        
+        // Initialize dark mode from localStorage
+        function initDarkMode() {
+            const savedMode = localStorage.getItem('darkMode');
+            if (savedMode === 'dark' || (!savedMode && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.classList.add('dark');
+            }
+        }
+        
+        // Tab switching
+        function switchTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.add('hidden');
+            });
+            
+            // Remove active class from all tab buttons
+            document.querySelectorAll('.tab').forEach(btn => {
+                btn.classList.remove('active');
+                btn.classList.remove('text-blue-600', 'dark:text-blue-400');
+                btn.classList.add('text-gray-500', 'dark:text-gray-400');
+            });
+            
+            // Show selected tab
+            document.getElementById(tabName + 'Tab').classList.remove('hidden');
+            
+            // Add active class to clicked tab button
+            const activeBtn = document.querySelector(`[data-tab="${tabName}"]`);
+            activeBtn.classList.add('active');
+            activeBtn.classList.remove('text-gray-500', 'dark:text-gray-400');
+            activeBtn.classList.add('text-blue-600', 'dark:text-blue-400');
+            
+            // If switching to analytics, render charts
+            if (tabName === 'analytics') {
+                renderCharts();
+            }
+        }
+        
+        // Render all analytics charts
+        async function renderCharts() {
+            try {
+                const [pipelineData, summaryData] = await Promise.all([
+                    fetch('/api/stats/pipeline').then(r => r.json()),
+                    fetch('/api/stats/summary').then(r => r.json())
+                ]);
+                
+                renderStageChart(pipelineData.by_stage);
+                renderChamberChart(summaryData);
+                renderTimelineChart(pipelineData.by_stage);
+                renderActivityChart();
+            } catch (error) {
+                console.error('Error rendering charts:', error);
+            }
+        }
+        
+        // Get chart colors based on theme
+        function getChartColors() {
+            const isDark = document.documentElement.classList.contains('dark');
+            return {
+                text: isDark ? '#e5e7eb' : '#374151',
+                grid: isDark ? '#374151' : '#e5e7eb',
+                background: isDark ? '#1f2937' : '#ffffff'
+            };
+        }
+        
+        // Render bills by stage chart
+        function renderStageChart(stageData) {
+            const ctx = document.getElementById('stageChart').getContext('2d');
+            const colors = getChartColors();
+            
+            // Destroy existing chart if it exists
+            if (charts.stage) charts.stage.destroy();
+            
+            charts.stage = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Introduced', 'Committee', 'Committee Approved', 'Floor Calendar', 'Passed Chamber', 'Enrolled', 'Signed', 'Vetoed'],
+                    datasets: [{
+                        data: [
+                            stageData.introduced || 0,
+                            stageData.committee || 0,
+                            stageData.committee_approved || 0,
+                            stageData.floor_calendar || 0,
+                            stageData.passed_chamber || 0,
+                            stageData.enrolled || 0,
+                            stageData.signed || 0,
+                            stageData.vetoed || 0
+                        ],
+                        backgroundColor: [
+                            '#3b82f6', '#8b5cf6', '#6366f1', '#7c3aed',
+                            '#06b6d4', '#14b8a6', '#10b981', '#ef4444'
+                        ],
+                        borderWidth: 2,
+                        borderColor: colors.background
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                color: colors.text,
+                                padding: 15,
+                                font: { size: 11 }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Render bills by chamber chart
+        function renderChamberChart(summaryData) {
+            const ctx = document.getElementById('chamberChart').getContext('2d');
+            const colors = getChartColors();
+            
+            if (charts.chamber) charts.chamber.destroy();
+            
+            charts.chamber = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: ['House Bills', 'Senate Bills'],
+                    datasets: [{
+                        data: [
+                            summaryData.house_bills || 0,
+                            summaryData.senate_bills || 0
+                        ],
+                        backgroundColor: ['#3b82f6', '#f59e0b'],
+                        borderWidth: 2,
+                        borderColor: colors.background
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                color: colors.text,
+                                padding: 15,
+                                font: { size: 12 }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Render timeline chart
+        function renderTimelineChart(stageData) {
+            const ctx = document.getElementById('timelineChart').getContext('2d');
+            const colors = getChartColors();
+            
+            if (charts.timeline) charts.timeline.destroy();
+            
+            charts.timeline = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Introduced', 'Committee', 'Approved', 'Floor', 'Passed', 'Enrolled', 'Signed', 'Vetoed'],
+                    datasets: [{
+                        label: 'Number of Bills',
+                        data: [
+                            stageData.introduced || 0,
+                            stageData.committee || 0,
+                            stageData.committee_approved || 0,
+                            stageData.floor_calendar || 0,
+                            stageData.passed_chamber || 0,
+                            stageData.enrolled || 0,
+                            stageData.signed || 0,
+                            stageData.vetoed || 0
+                        ],
+                        backgroundColor: '#3b82f6',
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { color: colors.text },
+                            grid: { color: colors.grid }
+                        },
+                        x: {
+                            ticks: { color: colors.text },
+                            grid: { color: colors.grid }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Render activity chart (sample data for demo)
+        function renderActivityChart() {
+            const ctx = document.getElementById('activityChart').getContext('2d');
+            const colors = getChartColors();
+            
+            if (charts.activity) charts.activity.destroy();
+            
+            // Generate sample data for the last 30 days
+            const days = 30;
+            const labels = [];
+            const data = [];
+            
+            for (let i = days; i >= 0; i--) {
+                const date = new Date();
+                date.setDate(date.getDate() - i);
+                labels.push(date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+                // Sample data - in production this would come from the API
+                data.push(Math.floor(Math.random() * 15) + 5);
+            }
+            
+            charts.activity = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Bills Filed',
+                        data: data,
+                        borderColor: '#3b82f6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { color: colors.text },
+                            grid: { color: colors.grid }
+                        },
+                        x: {
+                            ticks: { 
+                                color: colors.text,
+                                maxRotation: 45,
+                                minRotation: 45
+                            },
+                            grid: { color: colors.grid }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            labels: { color: colors.text }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Update chart themes when dark mode changes
+        function updateChartsTheme() {
+            if (Object.keys(charts).length > 0) {
+                renderCharts();
+            }
+        }
+        
+        // Stage definitions
+        const stages = [
+            { id: 'introduced', name: 'Introduced', color: 'bg-blue-100 text-blue-800 border-blue-300' },
+            { id: 'committee', name: 'Committee', color: 'bg-purple-100 text-purple-800 border-purple-300' },
+            { id: 'committee_approved', name: 'Committee OK', color: 'bg-indigo-100 text-indigo-800 border-indigo-300' },
+            { id: 'floor_calendar', name: 'Floor Ready', color: 'bg-violet-100 text-violet-800 border-violet-300' },
+            { id: 'passed_chamber', name: 'Passed Chamber', color: 'bg-cyan-100 text-cyan-800 border-cyan-300' },
+            { id: 'enrolled', name: 'Enrolled', color: 'bg-teal-100 text-teal-800 border-teal-300' },
+            { id: 'signed', name: 'Signed', color: 'bg-green-100 text-green-800 border-green-300' },
+            { id: 'vetoed', name: 'Vetoed', color: 'bg-red-100 text-red-800 border-red-300' }
+        ];
+
+        // Initialize dashboard
+        async function initDashboard() {
+            await Promise.all([
+                loadSummaryStats(),
+                loadPipelineStats(),
+                loadBills()
+            ]);
+        }
+
+        // Load summary statistics
+        async function loadSummaryStats() {
+            try {
+                const response = await fetch('/api/stats/summary');
+                const data = await response.json();
+                
+                document.getElementById('totalBills').textContent = data.total_bills || 0;
+                document.getElementById('activeBills').textContent = data.active_bills || 0;
+                document.getElementById('passedBills').textContent = data.passed_bills || 0;
+                document.getElementById('vetoedBills').textContent = data.vetoed_bills || 0;
+                document.getElementById('houseBillCount').textContent = data.house_bills || 0;
+                document.getElementById('senateBillCount').textContent = data.senate_bills || 0;
+                
+                updateLastUpdated();
+            } catch (error) {
+                console.error('Error loading summary stats:', error);
+            }
+        }
+
+        // Load pipeline statistics
+        async function loadPipelineStats() {
+            try {
+                const response = await fetch('/api/stats/pipeline');
+                const data = await response.json();
+                
+                renderPipeline(data.by_stage);
+            } catch (error) {
+                console.error('Error loading pipeline stats:', error);
+            }
+        }
+
+        // Render pipeline visualization
+        function renderPipeline(stageCounts) {
+            const pipeline = document.getElementById('pipeline');
+            pipeline.innerHTML = '';
+            
+            stages.forEach((stage, index) => {
+                const count = stageCounts[stage.id] || 0;
+                
+                // Create stage box
+                const stageDiv = document.createElement('div');
+                stageDiv.className = 'flex-shrink-0 flex flex-col items-center';
+                stageDiv.innerHTML = `
+                    <div class="stage-box cursor-pointer border-2 ${stage.color} rounded-lg p-4 w-32 text-center shadow-sm" onclick="filterByStage('${stage.id}')">
+                        <div class="text-2xl font-bold mb-1">${count}</div>
+                        <div class="text-xs font-medium leading-tight">${stage.name}</div>
+                    </div>
+                `;
+                
+                pipeline.appendChild(stageDiv);
+                
+                // Add arrow between stages (except after last stage)
+                if (index < stages.length - 1) {
+                    const arrow = document.createElement('div');
+                    arrow.className = 'flex-shrink-0 flex items-center px-2 pipeline-arrow';
+                    arrow.innerHTML = `
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                        </svg>
+                    `;
+                    pipeline.appendChild(arrow);
+                }
+            });
+        }
+
+        // Load bills
+        async function loadBills(page = 1) {
+            try {
+                document.getElementById('billsList').innerHTML = '<div class="p-8 text-center text-gray-500 loading">Loading bills...</div>';
+                
+                const params = new URLSearchParams({
+                    page,
+                    per_page: 10,
+                    ...currentFilters
+                });
+                
+                const response = await fetch(`/api/bills?${params}`);
+                const data = await response.json();
+                
+                billsData = data.results;
+                renderBills(billsData);
+                updatePagination(data.pagination);
+                currentPage = page;
+            } catch (error) {
+                console.error('Error loading bills:', error);
+                document.getElementById('billsList').innerHTML = `
+                    <div class="p-8 text-center">
+                        <p class="text-red-600">Error loading bills. Please try again.</p>
+                        <p class="text-sm text-gray-500 mt-2">${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Render bills list
+        function renderBills(bills) {
+            const billsList = document.getElementById('billsList');
+            
+            if (!bills || bills.length === 0) {
+                billsList.innerHTML = '<div class="p-8 text-center text-gray-500 dark:text-gray-400">No bills found.</div>';
+                return;
+            }
+            
+            billsList.innerHTML = bills.map(bill => {
+                const stage = stages.find(s => s.id === bill.stage) || stages[0];
+                const chamber = bill.identifier?.startsWith('HB') ? 'House' : 
+                               bill.identifier?.startsWith('SB') ? 'Senate' : 'Unknown';
+                
+                return `
+                    <div class="bill-row p-6 cursor-pointer" onclick="showBillDetails('${bill.id}')">
+                        <div class="flex items-start justify-between">
+                            <div class="flex-1">
+                                <div class="flex items-center space-x-3 mb-2">
+                                    <span class="font-bold text-blue-600 dark:text-blue-400">${bill.identifier}</span>
+                                    <span class="px-2 py-1 text-xs rounded-full ${stage.color} border">${stage.name}</span>
+                                    <span class="text-xs text-gray-500 dark:text-gray-400">${chamber}</span>
+                                </div>
+                                <h4 class="font-medium text-gray-900 dark:text-white mb-2">${bill.title}</h4>
+                                ${bill.latest_action_description ? `
+                                    <p class="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                                        <span class="font-medium">Latest:</span> ${bill.latest_action_description}
+                                    </p>
+                                ` : ''}
+                                <div class="flex items-center space-x-4 text-xs text-gray-500 dark:text-gray-400">
+                                    ${bill.latest_action_date ? `
+                                        <span>📅 ${new Date(bill.latest_action_date).toLocaleDateString()}</span>
+                                    ` : ''}
+                                    ${bill.sponsorships && bill.sponsorships.length > 0 ? `
+                                        <span>👤 ${bill.sponsorships[0].name}</span>
+                                    ` : ''}
+                                </div>
+                            </div>
+                            <svg class="w-5 h-5 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                            </svg>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Update pagination controls
+        function updatePagination(pagination) {
+            if (!pagination) return;
+            
+            const pageInfo = document.getElementById('pageInfo');
+            const prevBtn = document.getElementById('prevBtn');
+            const nextBtn = document.getElementById('nextBtn');
+            
+            pageInfo.textContent = `Page ${pagination.page} of ${Math.ceil(pagination.total_items / pagination.per_page)}`;
+            
+            prevBtn.disabled = pagination.page <= 1;
+            nextBtn.disabled = pagination.page >= Math.ceil(pagination.total_items / pagination.per_page);
+        }
+
+        // Filter by stage (when clicking pipeline box)
+        function filterByStage(stageId) {
+            document.getElementById('statusFilter').value = stageId;
+            applyFilters();
+        }
+
+        // Apply filters
+        function applyFilters() {
+            currentFilters = {};
+            
+            const chamber = document.getElementById('chamberFilter').value;
+            const status = document.getElementById('statusFilter').value;
+            const search = document.getElementById('searchInput').value;
+            
+            if (chamber) currentFilters.chamber = chamber;
+            if (status) currentFilters.status = status;
+            if (search) currentFilters.q = search;
+            
+            loadBills(1);
+        }
+
+        // Pagination
+        function loadNextPage() {
+            loadBills(currentPage + 1);
+        }
+
+        function loadPreviousPage() {
+            if (currentPage > 1) {
+                loadBills(currentPage - 1);
+            }
+        }
+
+        // Refresh all data
+        async function refreshData() {
+            await initDashboard();
+        }
+
+        // Update last updated timestamp
+        function updateLastUpdated() {
+            const now = new Date();
+            document.getElementById('lastUpdated').textContent = now.toLocaleTimeString();
+        }
+
+        // Show bill details (placeholder)
+        function showBillDetails(billId) {
+            alert(`Bill details for: ${billId}\n\nIn a full implementation, this would open a detailed view with:\n- Complete bill text\n- Full action history\n- Vote records\n- Sponsor information\n- Related documents`);
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            initDarkMode();
+            initDashboard();
+            
+            // Auto-refresh every 5 minutes
+            setInterval(refreshData, 5 * 60 * 1000);
+        });
+    </script>
+</body>
+</html>

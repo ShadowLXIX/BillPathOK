@@ -1,0 +1,20 @@
+{
+  "name": "oklahoma-bill-tracker-poc",
+  "version": "1.0.0",
+  "description": "Proof of concept for Oklahoma State Legislature bill tracking dashboard",
+  "type": "module",
+  "scripts": {
+    "dev": "node server.js",
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "axios": "^1.6.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1"
+  },
+  "devDependencies": {},
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

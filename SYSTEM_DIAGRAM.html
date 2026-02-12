@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Oklahoma Bill Tracker - System Architecture</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .component {
+            transition: all 0.3s ease;
+        }
+        .component:hover {
+            transform: scale(1.05);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+        }
+        .arrow {
+            stroke: #64748b;
+            stroke-width: 2;
+            fill: none;
+            marker-end: url(#arrowhead);
+        }
+        .data-flow {
+            animation: dash 1.5s linear infinite;
+            stroke-dasharray: 5, 5;
+        }
+        @keyframes dash {
+            to {
+                stroke-dashoffset: -10;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen p-8">
+    
+    <div class="max-w-7xl mx-auto">
+        
+        <!-- Header -->
+        <div class="text-center mb-12">
+            <h1 class="text-4xl font-bold text-gray-900 mb-2">Oklahoma Bill Tracker</h1>
+            <h2 class="text-2xl text-gray-700 mb-4">System Architecture</h2>
+            <p class="text-gray-600 max-w-2xl mx-auto">
+                A comprehensive view of the technical architecture showing data flow from the Open States API 
+                through the backend services to the frontend dashboard.
+            </p>
+        </div>
+
+        <!-- Architecture Diagram -->
+        <div class="bg-white rounded-xl shadow-2xl p-8 mb-8">
+            
+            <!-- Frontend Layer -->
+            <div class="mb-8">
+                <div class="text-center mb-4">
+                    <h3 class="text-xl font-bold text-blue-600 inline-block px-4 py-2 bg-blue-50 rounded-lg">
+                        Frontend Layer
+                    </h3>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="component bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg p-6 text-white shadow-lg">
+                        <div class="text-3xl mb-2">📊</div>
+                        <h4 class="font-bold text-lg mb-2">Dashboard UI</h4>
+                        <p class="text-sm text-blue-100">Interactive visualizations, pipeline view, summary cards</p>
+                        <div class="mt-3 text-xs">
+                            <span class="bg-blue-400 px-2 py-1 rounded">React</span>
+                            <span class="bg-blue-400 px-2 py-1 rounded ml-1">Tailwind</span>
+                        </div>
+                    </div>
+                    
+                    <div class="component bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-lg p-6 text-white shadow-lg">
+                        <div class="text-3xl mb-2">🔍</div>
+                        <h4 class="font-bold text-lg mb-2">Bill Explorer</h4>
+                        <p class="text-sm text-indigo-100">Search, filter, and browse bills with real-time updates</p>
+                        <div class="mt-3 text-xs">
+                            <span class="bg-indigo-400 px-2 py-1 rounded">JavaScript</span>
+                            <span class="bg-indigo-400 px-2 py-1 rounded ml-1">Chart.js</span>
+                        </div>
+                    </div>
+                    
+                    <div class="component bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg p-6 text-white shadow-lg">
+                        <div class="text-3xl mb-2">👥</div>
+                        <h4 class="font-bold text-lg mb-2">Legislator View</h4>
+                        <p class="text-sm text-purple-100">Browse legislators, view voting records and sponsorships</p>
+                        <div class="mt-3 text-xs">
+                            <span class="bg-purple-400 px-2 py-1 rounded">Responsive</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Arrow Down -->
+            <div class="text-center my-4">
+                <svg width="100%" height="40">
+                    <defs>
+                        <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                            <polygon points="0 0, 10 3.5, 0 7" fill="#64748b" />
+                        </marker>
+                    </defs>
+                    <line x1="50%" y1="0" x2="50%" y2="40" class="arrow data-flow" />
+                </svg>
+            </div>
+
+            <!-- API Gateway -->
+            <div class="mb-8">
+                <div class="component bg-gradient-to-br from-teal-500 to-teal-600 rounded-lg p-6 text-white shadow-lg max-w-md mx-auto">
+                    <div class="text-3xl mb-2 text-center">🌐</div>
+                    <h4 class="font-bold text-lg mb-2 text-center">API Gateway</h4>
+                    <p class="text-sm text-teal-100 text-center mb-3">RESTful API endpoints for data access</p>
+                    <div class="grid grid-cols-2 gap-2 text-xs">
+                        <div class="bg-teal-400 px-2 py-1 rounded">GET /api/bills</div>
+                        <div class="bg-teal-400 px-2 py-1 rounded">GET /api/stats</div>
+                        <div class="bg-teal-400 px-2 py-1 rounded">GET /api/legislators</div>
+                        <div class="bg-teal-400 px-2 py-1 rounded">GET /api/search</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Arrow Down -->
+            <div class="text-center my-4">
+                <svg width="100%" height="40">
+                    <line x1="50%" y1="0" x2="50%" y2="40" class="arrow data-flow" />
+                </svg>
+            </div>
+
+            <!-- Backend Layer -->
+            <div class="mb-8">
+                <div class="text-center mb-4">
+                    <h3 class="text-xl font-bold text-green-600 inline-block px-4 py-2 bg-green-50 rounded-lg">
+                        Backend Layer
+                    </h3>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div class="component bg-gradient-to-br from-green-500 to-green-600 rounded-lg p-6 text-white shadow-lg">
+                        <div class="text-3xl mb-2">⚙️</div>
+                        <h4 class="font-bold text-lg mb-2">Express Server</h4>
+                        <p class="text-sm text-green-100">API routing, request handling</p>
+                        <div class="mt-3 text-xs">
+                            <span class="bg-green-400 px-2 py-1 rounded">Node.js</span>
+                        </div>
+                    </div>
+                    
+                    <div class="component bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-lg p-6 text-white shadow-lg">
+                        <div class="text-3xl mb-2">🔄</div>
+                        <h4 class="font-bold text-lg mb-2">Data Processing</h4>
+                        <p class="text-sm text-emerald-100">Bill stage determination, data enrichment</p>
+                        <div class="mt-3 text-xs">
+                            <span class="bg-emerald-400 px-2 py-1 rounded">Business Logic</span>
+                        </div>
+                    </div>
+                    
+                    <div class="component bg-gradient-to-br from-cyan-500 to-cyan-600 rounded-lg p-6 text-white shadow-lg">
+                        <div class="text-3xl mb-2">💾</div>
+                        <h4 class="font-bold text-lg mb-2">Cache Layer</h4>
+                        <p class="text-sm text-cyan-100">Response caching (future: Redis)</p>
+                        <div class="mt-3 text-xs">
+                            <span class="bg-cyan-400 px-2 py-1 rounded">Optional</span>
+                        </div>
+                    </div>
+                    
+                    <div class="component bg-gradient-to-br from-sky-500 to-sky-600 rounded-lg p-6 text-white shadow-lg">
+                        <div class="text-3xl mb-2">🗄️</div>
+                        <h4 class="font-bold text-lg mb-2">Database</h4>
+                        <p class="text-sm text-sky-100">Bill storage (future: PostgreSQL)</p>
+                        <div class="mt-3 text-xs">
+                            <span class="bg-sky-400 px-2 py-1 rounded">Optional</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Arrow Down -->
+            <div class="text-center my-4">
+                <svg width="100%" height="40">
+                    <line x1="50%" y1="0" x2="50%" y2="40" class="arrow data-flow" />
+                </svg>
+            </div>
+
+            <!-- External Data Source -->
+            <div class="mb-8">
+                <div class="text-center mb-4">
+                    <h3 class="text-xl font-bold text-orange-600 inline-block px-4 py-2 bg-orange-50 rounded-lg">
+                        External Data Source
+                    </h3>
+                </div>
+                
+                <div class="component bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg p-8 text-white shadow-lg max-w-2xl mx-auto">
+                    <div class="text-center">
+                        <div class="text-4xl mb-3">🏛️</div>
+                        <h4 class="font-bold text-2xl mb-3">Open States API v3</h4>
+                        <p class="text-orange-100 mb-4">Comprehensive legislative data for all 50 states including Oklahoma</p>
+                        <div class="grid grid-cols-2 gap-3 text-sm">
+                            <div class="bg-orange-400 px-3 py-2 rounded">
+                                <div class="font-bold">Bills</div>
+                                <div class="text-xs">Full text, status, actions</div>
+                            </div>
+                            <div class="bg-orange-400 px-3 py-2 rounded">
+                                <div class="font-bold">Legislators</div>
+                                <div class="text-xs">Profiles, contacts, roles</div>
+                            </div>
+                            <div class="bg-orange-400 px-3 py-2 rounded">
+                                <div class="font-bold">Votes</div>
+                                <div class="text-xs">Roll calls, individual votes</div>
+                            </div>
+                            <div class="bg-orange-400 px-3 py-2 rounded">
+                                <div class="font-bold">Committees</div>
+                                <div class="text-xs">Membership, meetings</div>
+                            </div>
+                        </div>
+                        <div class="mt-4 text-xs">
+                            <span class="bg-orange-700 px-3 py-1 rounded">v3.openstates.org</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Data Flow Description -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <h3 class="text-xl font-bold text-gray-900 mb-4">📥 Data Flow (Request)</h3>
+                <ol class="space-y-3 text-sm text-gray-700">
+                    <li class="flex items-start">
+                        <span class="bg-blue-600 text-white rounded-full w-6 h-6 flex items-center justify-center mr-3 flex-shrink-0">1</span>
+                        <span>User interacts with dashboard (filters, search, clicks pipeline stage)</span>
+                    </li>
+                    <li class="flex items-start">
+                        <span class="bg-blue-600 text-white rounded-full w-6 h-6 flex items-center justify-center mr-3 flex-shrink-0">2</span>
+                        <span>Frontend sends HTTP request to API Gateway (e.g., GET /api/bills?status=committee)</span>
+                    </li>
+                    <li class="flex items-start">
+                        <span class="bg-blue-600 text-white rounded-full w-6 h-6 flex items-center justify-center mr-3 flex-shrink-0">3</span>
+                        <span>Express server routes request to appropriate handler</span>
+                    </li>
+                    <li class="flex items-start">
+                        <span class="bg-blue-600 text-white rounded-full w-6 h-6 flex items-center justify-center mr-3 flex-shrink-0">4</span>
+                        <span>Backend calls Open States API with jurisdiction=ok and filters</span>
+                    </li>
+                    <li class="flex items-start">
+                        <span class="bg-blue-600 text-white rounded-full w-6 h-6 flex items-center justify-center mr-3 flex-shrink-0">5</span>
+                        <span>Process and enrich data (determine bill stages, format dates)</span>
+                    </li>
+                    <li class="flex items-start">
+                        <span class="bg-blue-600 text-white rounded-full w-6 h-6 flex items-center justify-center mr-3 flex-shrink-0">6</span>
+                        <span>Return JSON response to frontend with enhanced bill data</span>
+                    </li>
+                    <li class="flex items-start">
+                        <span class="bg-blue-600 text-white rounded-full w-6 h-6 flex items-center justify-center mr-3 flex-shrink-0">7</span>
+                        <span>Dashboard renders updated UI with bills and visualizations</span>
+                    </li>
+                </ol>
+            </div>
+
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <h3 class="text-xl font-bold text-gray-900 mb-4">🔧 Technology Stack</h3>
+                
+                <div class="space-y-4">
+                    <div>
+                        <h4 class="font-semibold text-gray-800 mb-2">Frontend</h4>
+                        <div class="flex flex-wrap gap-2">
+                            <span class="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">Vanilla JavaScript</span>
+                            <span class="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">Tailwind CSS</span>
+                            <span class="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">Chart.js</span>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <h4 class="font-semibold text-gray-800 mb-2">Backend</h4>
+                        <div class="flex flex-wrap gap-2">
+                            <span class="px-3 py-1 bg-green-100 text-green-800 rounded-full text-xs">Node.js 18+</span>
+                            <span class="px-3 py-1 bg-green-100 text-green-800 rounded-full text-xs">Express.js</span>
+                            <span class="px-3 py-1 bg-green-100 text-green-800 rounded-full text-xs">Axios</span>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <h4 class="font-semibold text-gray-800 mb-2">API</h4>
+                        <div class="flex flex-wrap gap-2">
+                            <span class="px-3 py-1 bg-orange-100 text-orange-800 rounded-full text-xs">Open States API v3</span>
+                            <span class="px-3 py-1 bg-orange-100 text-orange-800 rounded-full text-xs">REST JSON</span>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <h4 class="font-semibold text-gray-800 mb-2">Future Enhancements</h4>
+                        <div class="flex flex-wrap gap-2">
+                            <span class="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-xs">PostgreSQL</span>
+                            <span class="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-xs">Redis Cache</span>
+                            <span class="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-xs">Bull Queue</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Key Features -->
+        <div class="bg-white rounded-lg shadow-lg p-8">
+            <h3 class="text-2xl font-bold text-gray-900 mb-6 text-center">✨ Key Features</h3>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="text-center">
+                    <div class="text-4xl mb-3">📊</div>
+                    <h4 class="font-bold text-lg mb-2">Pipeline Visualization</h4>
+                    <p class="text-sm text-gray-600">Interactive visual representation of bills moving through each legislative stage with real-time counts</p>
+                </div>
+                
+                <div class="text-center">
+                    <div class="text-4xl mb-3">🔍</div>
+                    <h4 class="font-bold text-lg mb-2">Advanced Filtering</h4>
+                    <p class="text-sm text-gray-600">Filter by chamber, status, subject, sponsor, and search across all bill text and metadata</p>
+                </div>
+                
+                <div class="text-center">
+                    <div class="text-4xl mb-3">📈</div>
+                    <h4 class="font-bold text-lg mb-2">Real-time Statistics</h4>
+                    <p class="text-sm text-gray-600">Live summary cards showing total bills, active legislation, passed bills, and vetoed measures</p>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+</body>
+</html>
