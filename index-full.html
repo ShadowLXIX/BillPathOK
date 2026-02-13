@@ -1,0 +1,1000 @@
+<!DOCTYPE html>
+<html lang="en" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Oklahoma Bill Tracker - Complete</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    animation: {
+                        'fade-in': 'fadeIn 0.3s ease-in',
+                        'slide-up': 'slideUp 0.3s ease-out'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @keyframes slideUp {
+            from { transform: translateY(10px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        .stage-box { transition: all 0.3s ease; }
+        .stage-box:hover { transform: translateY(-4px); box-shadow: 0 8px 16px rgba(0,0,0,0.1); }
+        .bill-row { transition: all 0.2s ease; }
+        .bill-row:hover { background-color: #f8fafc; }
+        .dark .bill-row:hover { background-color: #1e293b; }
+        .tab { transition: all 0.2s ease; }
+        .tab.active { border-bottom: 2px solid #3b82f6; color: #3b82f6; }
+        .dark .tab.active { border-bottom: 2px solid #60a5fa; color: #60a5fa; }
+        .modal { display: none; }
+        .modal.show { display: flex; }
+        .favorite-btn { transition: all 0.2s ease; }
+        .favorite-btn.favorited { color: #f59e0b; }
+    </style>
+</head>
+<body class="bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
+    
+    <!-- Header -->
+    <header class="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-4">
+                    <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Oklahoma Legislature</h1>
+                    <span class="hidden md:inline-block px-3 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full text-xs font-semibold">
+                        Full Featured
+                    </span>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <!-- Favorites Badge -->
+                    <button onclick="switchTab('favorites')" class="relative p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" title="My Favorites">
+                        <svg class="w-5 h-5 text-gray-700 dark:text-gray-300" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                        </svg>
+                        <span id="favoritesCount" class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center hidden">0</span>
+                    </button>
+                    
+                    <!-- Dark Mode Toggle -->
+                    <button onclick="toggleDarkMode()" class="p-2 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors" title="Toggle dark mode">
+                        <svg class="w-5 h-5 text-gray-700 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>
+                        </svg>
+                    </button>
+                    
+                    <!-- Export Menu -->
+                    <div class="relative">
+                        <button onclick="toggleExportMenu()" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg flex items-center space-x-2 transition-colors">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                            </svg>
+                            <span class="hidden md:inline">Export</span>
+                        </button>
+                        <div id="exportMenu" class="hidden absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50">
+                            <button onclick="exportData('csv')" class="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300">Export as CSV</button>
+                            <button onclick="exportData('xlsx')" class="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300">Export as Excel</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Refresh Button -->
+                    <button onclick="refreshData()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center space-x-2 transition-colors">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                        </svg>
+                        <span class="hidden md:inline">Refresh</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <nav class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex space-x-8 overflow-x-auto">
+                <button onclick="switchTab('dashboard')" class="tab active py-4 px-1 font-medium whitespace-nowrap" data-tab="dashboard">
+                    📊 Dashboard
+                </button>
+                <button onclick="switchTab('search')" class="tab py-4 px-1 font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap" data-tab="search">
+                    🔍 Advanced Search
+                </button>
+                <button onclick="switchTab('analytics')" class="tab py-4 px-1 font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap" data-tab="analytics">
+                    📈 Analytics
+                </button>
+                <button onclick="switchTab('favorites')" class="tab py-4 px-1 font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap" data-tab="favorites">
+                    ⭐ My Favorites
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        
+        <!-- Dashboard Tab -->
+        <div id="dashboardTab" class="tab-content">
+            <!-- Summary Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Total Bills</p>
+                            <p id="totalBills" class="text-3xl font-bold text-gray-900 dark:text-white mt-2">-</p>
+                        </div>
+                        <div class="bg-blue-100 dark:bg-blue-900 rounded-full p-3">
+                            <svg class="w-6 h-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Active Bills</p>
+                            <p id="activeBills" class="text-3xl font-bold text-green-600 dark:text-green-400 mt-2">-</p>
+                        </div>
+                        <div class="bg-green-100 dark:bg-green-900 rounded-full p-3">
+                            <svg class="w-6 h-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Passed</p>
+                            <p id="passedBills" class="text-3xl font-bold text-emerald-600 dark:text-emerald-400 mt-2">-</p>
+                        </div>
+                        <div class="bg-emerald-100 dark:bg-emerald-900 rounded-full p-3">
+                            <svg class="w-6 h-6 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Vetoed</p>
+                            <p id="vetoedBills" class="text-3xl font-bold text-red-600 dark:text-red-400 mt-2">-</p>
+                        </div>
+                        <div class="bg-red-100 dark:bg-red-900 rounded-full p-3">
+                            <svg class="w-6 h-6 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pipeline Visualization -->
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow mb-8">
+                <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                    <h2 class="text-xl font-bold text-gray-900 dark:text-white">Legislative Pipeline</h2>
+                </div>
+                <div class="p-6">
+                    <div id="pipeline" class="flex items-start justify-between overflow-x-auto pb-4 gap-2">
+                        <!-- Pipeline stages will be inserted here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bills List -->
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow">
+                <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+                    <h3 class="text-lg font-bold text-gray-900 dark:text-white">Recent Bills</h3>
+                    <input 
+                        type="text" 
+                        id="quickSearch" 
+                        placeholder="Quick search..."
+                        class="px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        onkeyup="handleQuickSearch(event)"
+                    >
+                </div>
+                <div id="billsList" class="divide-y divide-gray-200 dark:divide-gray-700 min-h-[400px]">
+                    <!-- Bills will be inserted here -->
+                </div>
+                <div class="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex justify-between items-center">
+                    <button onclick="loadPreviousPage()" id="prevBtn" class="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50">
+                        Previous
+                    </button>
+                    <span id="pageInfo" class="text-sm text-gray-600 dark:text-gray-400">Page 1</span>
+                    <button onclick="loadNextPage()" id="nextBtn" class="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50">
+                        Next
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Search Tab -->
+        <div id="searchTab" class="tab-content hidden">
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-8">
+                <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-6">Advanced Search</h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Text Search</label>
+                        <input type="text" id="searchText" placeholder="Search in title and description..." class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Chamber</label>
+                        <select id="searchChamber" class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg">
+                            <option value="">All Chambers</option>
+                            <option value="upper">Senate</option>
+                            <option value="lower">House</option>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Stage</label>
+                        <select id="searchStage" class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg">
+                            <option value="">All Stages</option>
+                            <option value="introduced">Introduced</option>
+                            <option value="committee">Committee</option>
+                            <option value="committee_approved">Committee Approved</option>
+                            <option value="passed_chamber">Passed Chamber</option>
+                            <option value="enrolled">Enrolled</option>
+                            <option value="signed">Signed</option>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Sponsor</label>
+                        <input type="text" id="searchSponsor" placeholder="Legislator name..." class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Date From</label>
+                        <input type="date" id="searchDateFrom" class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Date To</label>
+                        <input type="date" id="searchDateTo" class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg">
+                    </div>
+                </div>
+                
+                <div class="flex space-x-4">
+                    <button onclick="performAdvancedSearch()" class="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium">
+                        Search
+                    </button>
+                    <button onclick="clearSearch()" class="px-6 py-3 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg font-medium">
+                        Clear
+                    </button>
+                </div>
+            </div>
+            
+            <div id="searchResults" class="bg-white dark:bg-gray-800 rounded-lg shadow">
+                <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                    <h3 class="text-lg font-bold text-gray-900 dark:text-white">Search Results <span id="searchResultCount" class="text-gray-500 dark:text-gray-400 font-normal"></span></h3>
+                </div>
+                <div id="searchResultsList" class="divide-y divide-gray-200 dark:divide-gray-700 min-h-[200px]">
+                    <div class="p-8 text-center text-gray-500 dark:text-gray-400">
+                        Use the search form above to find bills
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Analytics Tab -->
+        <div id="analyticsTab" class="tab-content hidden">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                    <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-4">Bills by Stage</h3>
+                    <canvas id="stageChart"></canvas>
+                </div>
+
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                    <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-4">Bills by Chamber</h3>
+                    <canvas id="chamberChart"></canvas>
+                </div>
+            </div>
+
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-8">
+                <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-4">Bill Status Distribution</h3>
+                <canvas id="timelineChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Favorites Tab -->
+        <div id="favoritesTab" class="tab-content hidden">
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow">
+                <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                    <h3 class="text-lg font-bold text-gray-900 dark:text-white">My Favorite Bills</h3>
+                    <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Track bills you're interested in</p>
+                </div>
+                <div id="favoritesList" class="divide-y divide-gray-200 dark:divide-gray-700 min-h-[400px]">
+                    <div class="p-8 text-center text-gray-500 dark:text-gray-400">
+                        No favorites yet. Click the ⭐ icon on any bill to add it here!
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Bill Detail Modal -->
+    <div id="billModal" class="modal fixed inset-0 bg-black bg-opacity-50 z-50 items-center justify-center p-4">
+        <div class="bg-white dark:bg-gray-800 rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div class="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex justify-between items-center">
+                <h2 id="modalBillTitle" class="text-2xl font-bold text-gray-900 dark:text-white"></h2>
+                <button onclick="closeBillModal()" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <div id="modalBillContent" class="p-6">
+                <!-- Bill details will be inserted here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // State management
+        let currentPage = 1;
+        let currentFilters = {};
+        let billsData = [];
+        let charts = {};
+        let sessionId = localStorage.getItem('sessionId') || null;
+        let favorites = new Set();
+        
+        // API Base URL
+        const API_BASE = '';
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            initDarkMode();
+            initDashboard();
+            loadFavorites();
+        });
+        
+        // Session management
+        async function getSessionId() {
+            if (!sessionId) {
+                const response = await fetch(`${API_BASE}/api/bills?per_page=1`);
+                sessionId = response.headers.get('X-Session-ID');
+                if (sessionId) {
+                    localStorage.setItem('sessionId', sessionId);
+                }
+            }
+            return sessionId;
+        }
+        
+        // Dark mode
+        function toggleDarkMode() {
+            const html = document.documentElement;
+            html.classList.toggle('dark');
+            localStorage.setItem('darkMode', html.classList.contains('dark') ? 'dark' : 'light');
+            updateChartsTheme();
+        }
+        
+        function initDarkMode() {
+            const saved = localStorage.getItem('darkMode');
+            if (saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.classList.add('dark');
+            }
+        }
+        
+        // Tab switching
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.add('hidden'));
+            document.querySelectorAll('.tab').forEach(btn => {
+                btn.classList.remove('active', 'text-blue-600', 'dark:text-blue-400');
+                btn.classList.add('text-gray-500', 'dark:text-gray-400');
+            });
+            
+            document.getElementById(tabName + 'Tab').classList.remove('hidden');
+            const activeBtn = document.querySelector(`[data-tab="${tabName}"]`);
+            activeBtn.classList.add('active');
+            activeBtn.classList.remove('text-gray-500', 'dark:text-gray-400');
+            activeBtn.classList.add('text-blue-600', 'dark:text-blue-400');
+            
+            if (tabName === 'analytics') renderCharts();
+            if (tabName === 'favorites') displayFavorites();
+        }
+        
+        // Initialize dashboard
+        async function initDashboard() {
+            await Promise.all([
+                loadSummaryStats(),
+                loadPipelineStats(),
+                loadBills()
+            ]);
+        }
+        
+        // Load summary stats
+        async function loadSummaryStats() {
+            try {
+                const response = await fetch(`${API_BASE}/api/stats/summary`);
+                const data = await response.json();
+                
+                document.getElementById('totalBills').textContent = data.total_bills || 0;
+                document.getElementById('activeBills').textContent = data.active_bills || 0;
+                document.getElementById('passedBills').textContent = data.passed_bills || 0;
+                document.getElementById('vetoedBills').textContent = data.vetoed_bills || 0;
+            } catch (error) {
+                console.error('Error loading summary stats:', error);
+            }
+        }
+        
+        // Load pipeline stats
+        async function loadPipelineStats() {
+            try {
+                const response = await fetch(`${API_BASE}/api/stats/pipeline`);
+                const data = await response.json();
+                
+                renderPipeline(data.by_stage);
+            } catch (error) {
+                console.error('Error loading pipeline stats:', error);
+            }
+        }
+        
+        // Stage definitions
+        const stages = [
+            { id: 'introduced', name: 'Introduced', color: 'bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-900 dark:text-blue-300' },
+            { id: 'committee', name: 'Committee', color: 'bg-purple-100 text-purple-800 border-purple-300 dark:bg-purple-900 dark:text-purple-300' },
+            { id: 'committee_approved', name: 'Approved', color: 'bg-indigo-100 text-indigo-800 border-indigo-300 dark:bg-indigo-900 dark:text-indigo-300' },
+            { id: 'floor_calendar', name: 'Floor', color: 'bg-violet-100 text-violet-800 border-violet-300 dark:bg-violet-900 dark:text-violet-300' },
+            { id: 'passed_chamber', name: 'Passed', color: 'bg-cyan-100 text-cyan-800 border-cyan-300 dark:bg-cyan-900 dark:text-cyan-300' },
+            { id: 'enrolled', name: 'Enrolled', color: 'bg-teal-100 text-teal-800 border-teal-300 dark:bg-teal-900 dark:text-teal-300' },
+            { id: 'signed', name: 'Signed', color: 'bg-green-100 text-green-800 border-green-300 dark:bg-green-900 dark:text-green-300' },
+            { id: 'vetoed', name: 'Vetoed', color: 'bg-red-100 text-red-800 border-red-300 dark:bg-red-900 dark:text-red-300' }
+        ];
+        
+        // Render pipeline
+        function renderPipeline(stageCounts) {
+            const pipeline = document.getElementById('pipeline');
+            pipeline.innerHTML = '';
+            
+            stages.forEach((stage, index) => {
+                const count = stageCounts[stage.id] || 0;
+                
+                const stageDiv = document.createElement('div');
+                stageDiv.className = 'flex-shrink-0';
+                stageDiv.innerHTML = `
+                    <div class="stage-box cursor-pointer border-2 ${stage.color} rounded-lg p-4 w-28 text-center shadow-sm" onclick="filterByStage('${stage.id}')">
+                        <div class="text-2xl font-bold">${count}</div>
+                        <div class="text-xs font-medium leading-tight mt-1">${stage.name}</div>
+                    </div>
+                `;
+                pipeline.appendChild(stageDiv);
+                
+                if (index < stages.length - 1) {
+                    const arrow = document.createElement('div');
+                    arrow.className = 'flex-shrink-0 flex items-center px-1 text-gray-300 dark:text-gray-600';
+                    arrow.innerHTML = '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>';
+                    pipeline.appendChild(arrow);
+                }
+            });
+        }
+        
+        // Filter by stage
+        function filterByStage(stageId) {
+            currentFilters.stage = stageId;
+            currentPage = 1;
+            loadBills();
+            switchTab('dashboard');
+        }
+        
+        // Load bills
+        async function loadBills(page = 1) {
+            try {
+                document.getElementById('billsList').innerHTML = '<div class="p-8 text-center text-gray-500 dark:text-gray-400"><div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div><p class="mt-2">Loading bills...</p></div>';
+                
+                const params = new URLSearchParams({
+                    page,
+                    per_page: 10,
+                    ...currentFilters
+                });
+                
+                const response = await fetch(`${API_BASE}/api/bills?${params}`);
+                const data = await response.json();
+                
+                billsData = data.results;
+                renderBills(billsData);
+                updatePagination(data.pagination);
+                currentPage = page;
+            } catch (error) {
+                console.error('Error loading bills:', error);
+                document.getElementById('billsList').innerHTML = '<div class="p-8 text-center text-red-600">Error loading bills</div>';
+            }
+        }
+        
+        // Render bills
+        function renderBills(bills) {
+            const billsList = document.getElementById('billsList');
+            
+            if (!bills || bills.length === 0) {
+                billsList.innerHTML = '<div class="p-8 text-center text-gray-500 dark:text-gray-400">No bills found</div>';
+                return;
+            }
+            
+            billsList.innerHTML = bills.map(bill => {
+                const stage = stages.find(s => s.id === bill.stage) || stages[0];
+                const chamber = bill.identifier?.startsWith('HB') ? 'House' : 'Senate';
+                const isFavorited = favorites.has(bill.id);
+                
+                return `
+                    <div class="bill-row p-6">
+                        <div class="flex items-start justify-between">
+                            <div class="flex-1">
+                                <div class="flex items-center space-x-3 mb-2">
+                                    <button onclick="toggleFavorite(${bill.id}, '${bill.identifier}')" class="favorite-btn ${isFavorited ? 'favorited' : ''}" title="${isFavorited ? 'Remove from favorites' : 'Add to favorites'}">
+                                        <svg class="w-5 h-5" fill="${isFavorited ? 'currentColor' : 'none'}" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"></path>
+                                        </svg>
+                                    </button>
+                                    <span class="font-bold text-blue-600 dark:text-blue-400 cursor-pointer hover:underline" onclick="showBillDetails('${bill.identifier}')">${bill.identifier}</span>
+                                    <span class="px-2 py-1 text-xs rounded-full ${stage.color} border">${stage.name}</span>
+                                    <span class="text-xs text-gray-500 dark:text-gray-400">${chamber}</span>
+                                </div>
+                                <h4 class="font-medium text-gray-900 dark:text-white mb-2 cursor-pointer hover:text-blue-600 dark:hover:text-blue-400" onclick="showBillDetails('${bill.identifier}')">${bill.title}</h4>
+                                ${bill.latest_action_description ? `
+                                    <p class="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                                        <span class="font-medium">Latest:</span> ${bill.latest_action_description}
+                                    </p>
+                                ` : ''}
+                                <div class="flex items-center space-x-4 text-xs text-gray-500 dark:text-gray-400">
+                                    ${bill.latest_action_date ? `<span>📅 ${new Date(bill.latest_action_date).toLocaleDateString()}</span>` : ''}
+                                    ${bill.primary_sponsor ? `<span>👤 ${bill.primary_sponsor}</span>` : ''}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        // Update pagination
+        function updatePagination(pagination) {
+            if (!pagination) return;
+            
+            document.getElementById('pageInfo').textContent = `Page ${pagination.page} of ${pagination.total_pages}`;
+            document.getElementById('prevBtn').disabled = pagination.page <= 1;
+            document.getElementById('nextBtn').disabled = pagination.page >= pagination.total_pages;
+        }
+        
+        function loadNextPage() {
+            loadBills(currentPage + 1);
+        }
+        
+        function loadPreviousPage() {
+            if (currentPage > 1) loadBills(currentPage - 1);
+        }
+        
+        // Quick search
+        let searchTimeout;
+        function handleQuickSearch(event) {
+            clearTimeout(searchTimeout);
+            const query = event.target.value.trim();
+            
+            if (event.key === 'Enter') {
+                currentFilters.search = query;
+                currentPage = 1;
+                loadBills();
+            } else {
+                searchTimeout = setTimeout(() => {
+                    currentFilters.search = query;
+                    currentPage = 1;
+                    loadBills();
+                }, 500);
+            }
+        }
+        
+        // Advanced search
+        async function performAdvancedSearch() {
+            const searchData = {
+                text: document.getElementById('searchText').value,
+                chamber: document.getElementById('searchChamber').value,
+                stage: document.getElementById('searchStage').value,
+                sponsor: document.getElementById('searchSponsor').value,
+                dateFrom: document.getElementById('searchDateFrom').value,
+                dateTo: document.getElementById('searchDateTo').value
+            };
+            
+            // Remove empty values
+            Object.keys(searchData).forEach(key => {
+                if (!searchData[key]) delete searchData[key];
+            });
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/search/advanced`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(searchData)
+                });
+                
+                const data = await response.json();
+                displaySearchResults(data.results, data.count);
+            } catch (error) {
+                console.error('Error performing search:', error);
+            }
+        }
+        
+        function displaySearchResults(results, count) {
+            document.getElementById('searchResultCount').textContent = `(${count} results)`;
+            const resultsList = document.getElementById('searchResultsList');
+            
+            if (results.length === 0) {
+                resultsList.innerHTML = '<div class="p-8 text-center text-gray-500 dark:text-gray-400">No results found</div>';
+                return;
+            }
+            
+            resultsList.innerHTML = results.map(bill => {
+                const stage = stages.find(s => s.id === bill.stage) || stages[0];
+                return `
+                    <div class="bill-row p-6">
+                        <div class="flex items-center space-x-3 mb-2">
+                            <span class="font-bold text-blue-600 dark:text-blue-400 cursor-pointer hover:underline" onclick="showBillDetails('${bill.identifier}')">${bill.identifier}</span>
+                            <span class="px-2 py-1 text-xs rounded-full ${stage.color}">${stage.name}</span>
+                        </div>
+                        <h4 class="font-medium text-gray-900 dark:text-white mb-2">${bill.title}</h4>
+                        ${bill.latest_action_description ? `<p class="text-sm text-gray-600 dark:text-gray-400">${bill.latest_action_description}</p>` : ''}
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        function clearSearch() {
+            document.getElementById('searchText').value = '';
+            document.getElementById('searchChamber').value = '';
+            document.getElementById('searchStage').value = '';
+            document.getElementById('searchSponsor').value = '';
+            document.getElementById('searchDateFrom').value = '';
+            document.getElementById('searchDateTo').value = '';
+            document.getElementById('searchResultsList').innerHTML = '<div class="p-8 text-center text-gray-500 dark:text-gray-400">Use the search form above to find bills</div>';
+            document.getElementById('searchResultCount').textContent = '';
+        }
+        
+        // Favorites functionality
+        async function loadFavorites() {
+            try {
+                const sid = await getSessionId();
+                const response = await fetch(`${API_BASE}/api/favorites`, {
+                    headers: { 'X-Session-ID': sid }
+                });
+                const data = await response.json();
+                
+                favorites = new Set(data.favorites.map(f => f.bill_id));
+                updateFavoritesCount();
+            } catch (error) {
+                console.error('Error loading favorites:', error);
+            }
+        }
+        
+        async function toggleFavorite(billId, billIdentifier) {
+            try {
+                const sid = await getSessionId();
+                const isFavorited = favorites.has(billId);
+                
+                if (isFavorited) {
+                    await fetch(`${API_BASE}/api/favorites/${billId}`, {
+                        method: 'DELETE',
+                        headers: { 'X-Session-ID': sid }
+                    });
+                    favorites.delete(billId);
+                } else {
+                    await fetch(`${API_BASE}/api/favorites`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-Session-ID': sid
+                        },
+                        body: JSON.stringify({ billId, billIdentifier })
+                    });
+                    favorites.add(billId);
+                }
+                
+                updateFavoritesCount();
+                
+                // Refresh current view
+                if (document.getElementById('favoritesTab').classList.contains('hidden') === false) {
+                    displayFavorites();
+                } else {
+                    loadBills(currentPage);
+                }
+            } catch (error) {
+                console.error('Error toggling favorite:', error);
+                alert('Error updating favorite');
+            }
+        }
+        
+        function updateFavoritesCount() {
+            const countElem = document.getElementById('favoritesCount');
+            const count = favorites.size;
+            
+            if (count > 0) {
+                countElem.textContent = count;
+                countElem.classList.remove('hidden');
+            } else {
+                countElem.classList.add('hidden');
+            }
+        }
+        
+        async function displayFavorites() {
+            try {
+                const sid = await getSessionId();
+                const response = await fetch(`${API_BASE}/api/favorites`, {
+                    headers: { 'X-Session-ID': sid }
+                });
+                const data = await response.json();
+                
+                const list = document.getElementById('favoritesList');
+                
+                if (data.favorites.length === 0) {
+                    list.innerHTML = '<div class="p-8 text-center text-gray-500 dark:text-gray-400">No favorites yet. Click the ⭐ icon on any bill to add it here!</div>';
+                    return;
+                }
+                
+                list.innerHTML = data.favorites.map(fav => {
+                    const stage = stages.find(s => s.id === fav.stage) || stages[0];
+                    return `
+                        <div class="bill-row p-6">
+                            <div class="flex items-start justify-between">
+                                <div class="flex-1">
+                                    <div class="flex items-center space-x-3 mb-2">
+                                        <button onclick="toggleFavorite(${fav.bill_id}, '${fav.identifier}')" class="favorite-btn favorited">
+                                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                                                <path d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/>
+                                            </svg>
+                                        </button>
+                                        <span class="font-bold text-blue-600 dark:text-blue-400 cursor-pointer hover:underline" onclick="showBillDetails('${fav.identifier}')">${fav.identifier}</span>
+                                        <span class="px-2 py-1 text-xs rounded-full ${stage.color}">${stage.name}</span>
+                                    </div>
+                                    <h4 class="font-medium text-gray-900 dark:text-white mb-2">${fav.title}</h4>
+                                    ${fav.latest_action_description ? `<p class="text-sm text-gray-600 dark:text-gray-400">${fav.latest_action_description}</p>` : ''}
+                                    <div class="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                                        Added ${new Date(fav.favorited_at).toLocaleDateString()}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            } catch (error) {
+                console.error('Error displaying favorites:', error);
+            }
+        }
+        
+        // Show bill details
+        async function showBillDetails(identifier) {
+            try {
+                const response = await fetch(`${API_BASE}/api/bills/${identifier}`);
+                const bill = await response.json();
+                
+                document.getElementById('modalBillTitle').textContent = `${bill.identifier}: ${bill.title}`;
+                
+                const stage = stages.find(s => s.id === bill.stage) || stages[0];
+                const isFavorited = favorites.has(bill.id);
+                
+                let content = `
+                    <div class="space-y-6">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-3">
+                                <span class="px-3 py-1 rounded-full ${stage.color} text-sm font-medium">${stage.name}</span>
+                                <span class="text-sm text-gray-600 dark:text-gray-400">${bill.identifier?.startsWith('HB') ? 'House' : 'Senate'}</span>
+                            </div>
+                            <button onclick="toggleFavorite(${bill.id}, '${bill.identifier}')" class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center space-x-2">
+                                <svg class="w-5 h-5 ${isFavorited ? 'text-yellow-500' : ''}" fill="${isFavorited ? 'currentColor' : 'none'}" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"></path>
+                                </svg>
+                                <span>${isFavorited ? 'Remove from' : 'Add to'} Favorites</span>
+                            </button>
+                        </div>
+                        
+                        ${bill.description ? `
+                            <div>
+                                <h3 class="font-bold text-gray-900 dark:text-white mb-2">Description</h3>
+                                <p class="text-gray-700 dark:text-gray-300">${bill.description}</p>
+                            </div>
+                        ` : ''}
+                        
+                        ${bill.sponsors && bill.sponsors.length > 0 ? `
+                            <div>
+                                <h3 class="font-bold text-gray-900 dark:text-white mb-2">Sponsors</h3>
+                                <div class="space-y-1">
+                                    ${bill.sponsors.map(s => `
+                                        <div class="text-sm">
+                                            <span class="font-medium">${s.name}</span>
+                                            ${s.primary ? '<span class="text-xs text-blue-600 dark:text-blue-400 ml-2">(Primary)</span>' : ''}
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        ` : ''}
+                        
+                        ${bill.actions && bill.actions.length > 0 ? `
+                            <div>
+                                <h3 class="font-bold text-gray-900 dark:text-white mb-2">Action Timeline</h3>
+                                <div class="space-y-3">
+                                    ${bill.actions.slice(0, 10).map(action => `
+                                        <div class="border-l-2 border-blue-600 pl-4">
+                                            <div class="text-sm font-medium text-gray-900 dark:text-white">${action.description}</div>
+                                            <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                                ${new Date(action.date).toLocaleDateString()} 
+                                                ${action.chamber ? `• ${action.chamber}` : ''}
+                                            </div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                                ${bill.actions.length > 10 ? `<p class="text-sm text-gray-500 dark:text-gray-400 mt-3">Showing 10 of ${bill.actions.length} actions</p>` : ''}
+                            </div>
+                        ` : ''}
+                        
+                        ${bill.openstates_url ? `
+                            <div>
+                                <a href="${bill.openstates_url}" target="_blank" class="inline-flex items-center space-x-2 text-blue-600 dark:text-blue-400 hover:underline">
+                                    <span>View on Open States</span>
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
+                                    </svg>
+                                </a>
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+                
+                document.getElementById('modalBillContent').innerHTML = content;
+                document.getElementById('billModal').classList.add('show');
+            } catch (error) {
+                console.error('Error loading bill details:', error);
+                alert('Error loading bill details');
+            }
+        }
+        
+        function closeBillModal() {
+            document.getElementById('billModal').classList.remove('show');
+        }
+        
+        // Export functionality
+        function toggleExportMenu() {
+            document.getElementById('exportMenu').classList.toggle('hidden');
+        }
+        
+        async function exportData(format) {
+            document.getElementById('exportMenu').classList.add('hidden');
+            
+            const url = `${API_BASE}/api/export/${format}${Object.keys(currentFilters).length ? '?' + new URLSearchParams(currentFilters) : ''}`;
+            window.location.href = url;
+        }
+        
+        // Charts
+        function getChartColors() {
+            const isDark = document.documentElement.classList.contains('dark');
+            return {
+                text: isDark ? '#e5e7eb' : '#374151',
+                grid: isDark ? '#374151' : '#e5e7eb',
+                background: isDark ? '#1f2937' : '#ffffff'
+            };
+        }
+        
+        async function renderCharts() {
+            try {
+                const [pipelineData, summaryData] = await Promise.all([
+                    fetch(`${API_BASE}/api/stats/pipeline`).then(r => r.json()),
+                    fetch(`${API_BASE}/api/stats/summary`).then(r => r.json())
+                ]);
+                
+                renderStageChart(pipelineData.by_stage);
+                renderChamberChart(summaryData);
+                renderTimelineChart(pipelineData.by_stage);
+            } catch (error) {
+                console.error('Error rendering charts:', error);
+            }
+        }
+        
+        function renderStageChart(stageData) {
+            const ctx = document.getElementById('stageChart').getContext('2d');
+            const colors = getChartColors();
+            
+            if (charts.stage) charts.stage.destroy();
+            
+            charts.stage = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: stages.map(s => s.name),
+                    datasets: [{
+                        data: stages.map(s => stageData[s.id] || 0),
+                        backgroundColor: ['#3b82f6', '#8b5cf6', '#6366f1', '#7c3aed', '#06b6d4', '#14b8a6', '#10b981', '#ef4444'],
+                        borderWidth: 2,
+                        borderColor: colors.background
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { color: colors.text, padding: 10, font: { size: 11 } } }
+                    }
+                }
+            });
+        }
+        
+        function renderChamberChart(summaryData) {
+            const ctx = document.getElementById('chamberChart').getContext('2d');
+            const colors = getChartColors();
+            
+            if (charts.chamber) charts.chamber.destroy();
+            
+            charts.chamber = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: ['House Bills', 'Senate Bills'],
+                    datasets: [{
+                        data: [summaryData.house_bills || 0, summaryData.senate_bills || 0],
+                        backgroundColor: ['#3b82f6', '#f59e0b'],
+                        borderWidth: 2,
+                        borderColor: colors.background
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { color: colors.text, padding: 15 } }
+                    }
+                }
+            });
+        }
+        
+        function renderTimelineChart(stageData) {
+            const ctx = document.getElementById('timelineChart').getContext('2d');
+            const colors = getChartColors();
+            
+            if (charts.timeline) charts.timeline.destroy();
+            
+            charts.timeline = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: stages.map(s => s.name),
+                    datasets: [{
+                        label: 'Bills',
+                        data: stages.map(s => stageData[s.id] || 0),
+                        backgroundColor: '#3b82f6',
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: { beginAtZero: true, ticks: { color: colors.text }, grid: { color: colors.grid } },
+                        x: { ticks: { color: colors.text }, grid: { color: colors.grid } }
+                    },
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
+        
+        function updateChartsTheme() {
+            if (Object.keys(charts).length > 0) renderCharts();
+        }
+        
+        // Refresh data
+        async function refreshData() {
+            await initDashboard();
+            await loadFavorites();
+        }
+        
+        // Close export menu when clicking outside
+        document.addEventListener('click', function(event) {
+            const exportMenu = document.getElementById('exportMenu');
+            const exportBtn = event.target.closest('[onclick="toggleExportMenu()"]');
+            
+            if (!exportBtn && !exportMenu.contains(event.target)) {
+                exportMenu.classList.add('hidden');
+            }
+        });
+    </script>
+</body>
+</html>
