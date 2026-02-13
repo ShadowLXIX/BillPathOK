@@ -12,6 +12,7 @@ DROP TABLE IF EXISTS legislators CASCADE;
 DROP TABLE IF EXISTS email_subscriptions CASCADE;
 DROP TABLE IF EXISTS user_preferences CASCADE;
 DROP TABLE IF EXISTS sync_metadata CASCADE;
+DROP TABLE IF EXISTS bill_favorites CASCADE;
 
 -- Legislators table
 CREATE TABLE legislators (
@@ -137,6 +138,17 @@ CREATE TABLE user_preferences (
   updated_at TIMESTAMP DEFAULT NOW()
 );
 
+-- Bill favorites table (allows anonymous favorites with browser storage)
+CREATE TABLE bill_favorites (
+  id SERIAL PRIMARY KEY,
+  session_id VARCHAR(255),
+  email VARCHAR(255),
+  bill_id INTEGER REFERENCES bills(id) ON DELETE CASCADE,
+  created_at TIMESTAMP DEFAULT NOW(),
+  notes TEXT,
+  notification_enabled BOOLEAN DEFAULT TRUE
+);
+
 -- Sync metadata (track last sync times)
 CREATE TABLE sync_metadata (
   id SERIAL PRIMARY KEY,
@@ -162,6 +174,9 @@ CREATE INDEX idx_sponsorships_legislator ON sponsorships(legislator_id);
 CREATE INDEX idx_votes_bill ON votes(bill_id);
 CREATE INDEX idx_email_subs_active ON email_subscriptions(email, is_active) WHERE is_active = TRUE;
 CREATE INDEX idx_email_subs_bill ON email_subscriptions(bill_id) WHERE is_active = TRUE;
+CREATE INDEX idx_favorites_session ON bill_favorites(session_id) WHERE session_id IS NOT NULL;
+CREATE INDEX idx_favorites_email ON bill_favorites(email) WHERE email IS NOT NULL;
+CREATE INDEX idx_favorites_bill ON bill_favorites(bill_id);
 
 -- Full text search indexes
 CREATE INDEX idx_bills_title_search ON bills USING gin(to_tsvector('english', title));
@@ -174,47 +189,13 @@ INSERT INTO sync_metadata (sync_type, status) VALUES
   ('actions', 'pending'),
   ('votes', 'pending');
 
--- Create function to update updated_at timestamp
-CREATE OR REPLACE FUNCTION update_updated_at_column()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.updated_at = NOW();
-    RETURN NEW;
-END;
-$$ language 'plpgsql';
-
--- Create triggers for updated_at
-CREATE TRIGGER update_bills_updated_at BEFORE UPDATE ON bills
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_legislators_updated_at BEFORE UPDATE ON legislators
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_user_preferences_updated_at BEFORE UPDATE ON user_preferences
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
--- Create view for bill summary with counts
-CREATE VIEW bill_summary AS
-SELECT 
-  b.id,
-  b.identifier,
-  b.title,
-  b.stage,
-  b.current_status,
-  b.latest_action_date,
-  b.latest_action_description,
-  COUNT(DISTINCT ba.id) as action_count,
-  COUNT(DISTINCT s.id) as sponsor_count,
-  COUNT(DISTINCT v.id) as vote_count,
-  STRING_AGG(DISTINCT s.name, ', ' ORDER BY s.name) as sponsors
-FROM bills b
-LEFT JOIN bill_actions ba ON b.id = ba.bill_id
-LEFT JOIN sponsorships s ON b.id = s.bill_id AND s.primary_sponsor = TRUE
-LEFT JOIN votes v ON b.id = v.bill_id
-GROUP BY b.id;
-
+-- Table comments
 COMMENT ON TABLE bills IS 'Main table storing Oklahoma legislative bills';
 COMMENT ON TABLE bill_history IS 'Tracks historical changes to bill status and stage';
 COMMENT ON TABLE email_subscriptions IS 'User email subscriptions for bill notifications';
 COMMENT ON TABLE sync_metadata IS 'Tracks data synchronization from Open States API';
-EOF
+COMMENT ON TABLE bill_favorites IS 'Stores user favorite/followed bills with optional email notifications';
+COMMENT ON COLUMN bill_favorites.session_id IS 'Browser session ID for anonymous users';
+COMMENT ON COLUMN bill_favorites.email IS 'Email for registered users (future feature)';
+COMMENT ON COLUMN bill_favorites.notes IS 'User personal notes about why they are following this bill';
+COMMENT ON COLUMN bill_favorites.notification_enabled IS 'Whether to send email notifications for this favorite';
